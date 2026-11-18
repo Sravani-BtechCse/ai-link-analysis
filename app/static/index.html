@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LinkLens — AI Website Analysis</title>
+<style>
+:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;color:#182230;background:#f5f7fb}
+*{box-sizing:border-box}body{margin:0}.wrap{max-width:1000px;margin:auto;padding:32px 20px 70px}
+header{display:flex;align-items:center;gap:12px;margin-bottom:54px}.logo{width:42px;height:42px;border-radius:13px;background:#243b80;color:white;display:grid;place-items:center;font-weight:800;font-size:20px}
+.brand{font-weight:800;font-size:20px}.tag{font-size:12px;color:#667085;margin-top:2px}
+.hero{text-align:center;max-width:720px;margin:0 auto 34px}.eyebrow{color:#3657b7;font-weight:700;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+h1{font-size:clamp(32px,5vw,52px);line-height:1.08;letter-spacing:-.04em;margin:14px 0}.sub{color:#667085;font-size:17px;line-height:1.6}
+.panel{background:white;border:1px solid #e3e8f1;border-radius:20px;padding:24px;box-shadow:0 12px 35px #1822300a}
+label{display:block;font-weight:700;font-size:14px;margin-bottom:9px} .inputrow{display:flex;gap:10px}
+input{flex:1;min-width:0;border:1px solid #cfd6e4;border-radius:11px;padding:15px;font-size:15px;outline:none}input:focus{border-color:#4565c5;box-shadow:0 0 0 3px #4565c51c}
+button{border:0;border-radius:11px;background:#29499f;color:white;padding:0 22px;font-size:15px;font-weight:700;cursor:pointer}button:disabled{opacity:.6;cursor:wait}
+.hint{font-size:12px;color:#7a8495;margin-top:10px}.status{margin-top:16px;color:#3657b7;font-size:14px}
+.results{margin-top:24px;display:grid;gap:16px}.card{background:white;border:1px solid #e3e8f1;border-radius:16px;padding:20px}.card h2{font-size:18px;margin:0 0 14px}.card h3{font-size:15px;margin:14px 0 6px}.card p{color:#596579;line-height:1.6;margin:5px 0}.card ul{padding-left:20px;color:#596579;line-height:1.7}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}.pill{display:inline-block;background:#eef2ff;color:#344c9b;padding:5px 9px;border-radius:20px;font-size:12px;margin:3px}
+.error{color:#b42318;background:#fff1f0;border:1px solid #ffd1cc;padding:13px;border-radius:10px;white-space:pre-wrap}
+footer{text-align:center;color:#98a2b3;font-size:12px;margin-top:36px}
+@media(max-width:600px){.inputrow{flex-direction:column}button{padding:15px}.wrap{padding:22px 14px 50px}.panel{padding:17px}}
+</style>
+</head>
+<body><main class="wrap">
+<header><div class="logo">L</div><div><div class="brand">LinkLens AI</div><div class="tag">Website intelligence, made simple</div></div></header>
+<section class="hero"><div class="eyebrow">AI-powered website analysis</div><h1>Understand your website.<br>Find your next opportunity.</h1><p class="sub">Enter a public website URL to discover its positioning, competitors, SEO opportunities, services and target audience.</p></section>
+<section class="panel"><form id="form"><label for="url">Website URL</label><div class="inputrow"><input id="url" type="url" placeholder="https://example.com" required><button id="submit" type="submit">Analyze website →</button></div><div class="hint">Use a public website URL. Analysis may take a little while.</div></form><div id="status" class="status" aria-live="polite"></div></section>
+<div id="results" class="results"></div><footer>LinkLens AI · Insights are AI-generated suggestions and should be independently verified.</footer>
+</main>
+<script>
+const form=document.querySelector('#form'), btn=document.querySelector('#submit'), statusEl=document.querySelector('#status'), results=document.querySelector('#results');
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const list=a=>Array.isArray(a)&&a.length?`<ul>${a.map(x=>`<li>${esc(typeof x==='string'?x:JSON.stringify(x))}</li>`).join('')}</ul>`:'<p>Not identified from the available page content.</p>';
+function section(title,body){return `<section class="card"><h2>${title}</h2>${body}</section>`}
+form.addEventListener('submit',async e=>{
+ e.preventDefault();results.innerHTML='';btn.disabled=true;statusEl.textContent='Fetching the website and generating your analysis…';
+ try{
+  const res=await fetch('/link-analysis',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:document.querySelector('#url').value.trim()})});
+  const data=await res.json();if(!res.ok)throw new Error(data.detail||`Request failed (${res.status})`);
+  const a=data.analysis||{}, c=a.competitor_analysis||{}, seo=a.seo_improvements||{}, aud=a.target_audience||{};
+  const competitors=(c.competitors||[]).map(x=>`<div class="card"><h3>${esc(x.name)}</h3><p>${esc(x.comparison_note)}</p>${x.website?`<p><a href="${esc(x.website)}" target="_blank" rel="noopener">Website</a></p>`:''}</div>`).join('');
+  const queries=(a.target_search_queries||[]).map(x=>`<div class="card"><h3>${esc(x.query)}</h3><p>${esc(x.intent)} · ${esc((x.platforms||[]).join(', '))}</p><p>${esc(x.business_relevance)}</p></div>`).join('');
+  const services=(a.top_services||[]).map(x=>`<div class="card"><h3>${esc(x.service_name)}</h3><p>${esc(x.description)}</p><p><b>Benefit:</b> ${esc(x.main_benefit)}</p><p><b>Evidence:</b> ${esc(x.evidence)}</p></div>`).join('');
+  results.innerHTML=
+   `<div class="card"><h2>${esc(data.brand?.name||'Website')} <span class="pill">${esc(data.brand?.category||'')}</span></h2><p>${esc(data.brand?.summary||'')}</p><p class="hint">Analyzed: ${esc(data.website)} · Model: ${esc(data.model)}</p></div>`+
+   section('1. Competitor analysis',`<p>${esc(c.brand_overview)}</p><p><b>Category:</b> ${esc(c.business_category)}</p><div class="grid">${competitors}</div><h3>Strengths</h3>${list(c.brand_strengths)}<h3>Opportunities</h3>${list(c.opportunities)}<p class="hint">${esc(c.evidence_note)}</p>`)+
+   section('2. Customer search queries',`<div class="grid">${queries||'<p>No queries returned.</p>'}</div>`)+
+   section('3. SEO improvements',`<p><b>Primary keyword:</b> ${esc(seo.primary_keyword)}</p><p><b>Suggested title:</b> ${esc(seo.recommended_title)}</p><p><b>Meta description:</b> ${esc(seo.meta_description)}</p><h3>Secondary keywords</h3>${list(seo.secondary_keywords)}<h3>Long-tail keywords</h3>${list(seo.long_tail_keywords)}<h3>Content ideas</h3>${list(seo.supporting_content)}`)+
+   section('4. Top services',`<div class="grid">${services||'<p>No services returned.</p>'}</div>`)+
+   section('5. Target audience',`<div class="grid"><div><h3>Primary audience</h3>${list(aud.primary_audience)}</div><div><h3>Industries</h3>${list(aud.industries)}</div><div><h3>Customer needs</h3>${list(aud.customer_needs)}</div><div><h3>Marketing segments</h3>${list(aud.recommended_marketing_segments)}</div></div>`)+
+   `<p class="hint">Source page title: ${esc(data.source?.page_title)}. Competitors and marketing recommendations are AI suggestions, not independently verified market research.</p>`;
+  statusEl.textContent='Analysis complete.';
+ }catch(err){statusEl.innerHTML=`<div class="error">${esc(err.message)}</div>`}
+ finally{btn.disabled=false}
+});
+</script></body></html>
